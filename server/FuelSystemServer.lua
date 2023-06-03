@@ -149,9 +149,9 @@ AddEventHandler('VisionCar:GetServerFuel', function(retplate, retfuel)
 	if not CarFuelLevel[retplate] then
 		MySQL.Async.fetchScalar('SELECT fuel FROM owned_vehicles WHERE plate = @plate', {['@plate'] = retplate}, function(data)
 			if data then
-				CarFuelLevel[retplate] = {plate = retplate, fuel = data, notOwned = true}
+				CarFuelLevel[retplate] = {plate = retplate, fuel = data, notOwned = false}
 			else
-				CarFuelLevel[retplate] = {plate = retplate, fuel = retfuel, notOwned = false}
+				CarFuelLevel[retplate] = {plate = retplate, fuel = retfuel, notOwned = true}
 			end
 		end)
 	end
@@ -169,7 +169,7 @@ end)
 RegisterNetEvent('VisionCar:SetServerFuel')
 AddEventHandler('VisionCar:SetServerFuel', function(retPlate, fuelVal)	
 	if not CarFuelLevel[retPlate] then
-		CarFuelLevel[retPlate] = {plate = retPlate, fuel = fuelVal, notOwned = false}
+		CarFuelLevel[retPlate] = {plate = retPlate, fuel = fuelVal, notOwned = true}
 	else
 		local previousOwned = CarFuelLevel[retPlate].notOwned
 		CarFuelLevel[retPlate] = nil
