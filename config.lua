@@ -8,6 +8,11 @@
 -- Constant , do not touch
 Config = {}
 Config.DisableKeys = {0, 22, 23, 24, 29, 30, 31, 37, 44, 56, 82, 140, 166, 167, 168, 170, 288, 289, 311, 323}
+Config.StaffGroups = {
+	'superadmin',
+	'admin',
+	'mod'
+}
 
 -- Price Config for Jerry Can
 Config.JerryCanPrice = 300
@@ -28,10 +33,11 @@ Config.PumpModels = {
 	[-531344027] = true
 }
 
--- What this does is basically tell the script that to extend the range of certain Pump to fuel up something like a plane
 Config.ExtendPump = {
 	[-531344027] = true
 }
+
+Config.ExtendPumpRange = 30.5
 
 -- All Petrol Station within Game
 Config.GasStations = {

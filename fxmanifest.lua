@@ -2,7 +2,7 @@ fx_version 'cerulean'
 
 game 'gta5'
 
-description 'VisionCar : Fuel System'
+description 'VisionCar : Revamped Car System for VRPM'
 
 dependencies {
     'es_extended'

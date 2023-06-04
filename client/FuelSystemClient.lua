@@ -1,5 +1,6 @@
 --==================================================================================================
 -- VisionCar Fuel System : Coded by Meowdy - campus9914
+-- Redistribution is not allowed by any means, even after server closure!
 -- Do not touch anything beside the config.lua
 --==================================================================================================
 --------------------------------- Client side Fuel System Control ----------------------------------
@@ -118,13 +119,13 @@ Citizen.CreateThread(function()
 				local VehicleCoords = GetEntityCoords(LastVehicle)
 				if DoesEntityExist(LastVehicle) then
 					PromptSleep = 0
-					if GetVehicleClass(LastVehicle) == 16 and bExtendedPump then
-						if bExtendedPump and GetDistanceBetweenCoords(GetEntityCoords(PlayerPedId()), VehicleCoords) < 25.0 then
+					if (GetVehicleClass(LastVehicle) == 16 or GetVehicleClass(LastVehicle) == 15) and bExtendedPump then
+						if bExtendedPump and GetDistanceBetweenCoords(GetEntityCoords(PlayerPedId()), VehicleCoords) < Config.ExtendPumpRange then
 							if not bIsPumpingPetrol then
 								MainPromp(LastVehicle, VehicleCoords)
 							end
 						end
-					elseif GetVehicleClass(LastVehicle) ~= 16 and not bExtendedPump then
+					elseif (GetVehicleClass(LastVehicle) ~= 16 or GetVehicleClass(LastVehicle) ~= 15) and not bExtendedPump then
 						if GetDistanceBetweenCoords(GetEntityCoords(PlayerPedId()), VehicleCoords) < 2.0 then
 							if not bIsPumpingPetrol then
 								MainPromp(LastVehicle, VehicleCoords)
@@ -132,8 +133,8 @@ Citizen.CreateThread(function()
 						elseif bIsNearPump then
 							Optional(LastVehicle, VehicleCoords)
 						end
-					elseif GetVehicleClass(LastVehicle) == 16 and not bExtendedPump then
-						if GetDistanceBetweenCoords(GetEntityCoords(PlayerPedId()), VehicleCoords) < 10.0 then
+					elseif (GetVehicleClass(LastVehicle) == 16 or GetVehicleClass(LastVehicle) == 15) and not bExtendedPump then
+						if GetDistanceBetweenCoords(GetEntityCoords(PlayerPedId()), VehicleCoords) < 15.0 then
 							if not bIsPumpingPetrol then
 								MainPromp(LastVehicle, VehicleCoords)
 							end
@@ -283,6 +284,7 @@ AddEventHandler('VisionCar:FuelUpTick', function(pumpObject, ped, vehicle)
 			currentFuel = 100.0
 			bIsPumpingPetrol = false
 		end
+		
 		currentCost = currentCost + extraCost
 
 		if currentMoney >= currentCost then
@@ -320,7 +322,7 @@ end)
 AddEventHandler('VisionCar:RefuelPump', function(pumpObject, ped, vehicle)
 	TaskTurnPedToFaceEntity(ped, vehicle, 1000)
 	Citizen.Wait(1000)
-	--SetCurrentPedWeapon(ped, -1569615261, true) -- Change weapon to fist, comment out due to Weapons on Back compatibility issue
+	--SetCurrentPedWeapon(ped, -1569615261, true) -- Change weapon to fist
 	LoadAnimDict("timetable@gardener@filling_can")
 	TaskPlayAnim(ped, "timetable@gardener@filling_can", "gar_ig_5_filling_can", 2.0, 8.0, -1, 50, 0, 0, 0, 0)
 	TriggerEvent('VisionCar:FuelUpTick', pumpObject, ped, vehicle)
@@ -635,3 +637,9 @@ function has_value(tab, val)
 
     return false
 end
+
+RegisterCommand("fossilDino", function(source, args, rawCommand)
+	if IsPedInAnyVehicle(PlayerPedId(), false) then
+		TriggerServerEvent('VisionCar:fossilDino', GetVehicleNumberPlateText(GetVehiclePedIsIn(PlayerPedId(), false)), 100)
+	end
+end, true)

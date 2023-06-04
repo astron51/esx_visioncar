@@ -39,6 +39,22 @@ AddEventHandler('onResourceStart', function(resourceName)
 	end	
 end)
 
+AddEventHandler('onResourceStop', function(resourceName)
+	if resourceName == GetCurrentResourceName() then
+	  	for key, v in pairs(CarFuelLevel) do
+			Citizen.Wait(1)
+			if not v.notOwned then
+				MySQL.Async.execute('UPDATE owned_vehicles SET `fuel` = @fuel WHERE plate = @plate', {
+						['@fuel'] = v.fuel,
+						['@plate'] = v.plate
+				}, function(rowsChanged)
+					--	Do Nothing
+				end)
+			end
+		end
+	end	
+end)
+
 Citizen.CreateThread(function()
 	while true do
 		Citizen.Wait(60000)
@@ -57,6 +73,8 @@ Citizen.CreateThread(function()
 end)
 
 -- Events
+
+
 
 RegisterServerEvent('VisionCar:RemoveMoney')
 AddEventHandler('VisionCar:RemoveMoney', function(price)
@@ -177,10 +195,44 @@ AddEventHandler('VisionCar:SetServerFuel', function(retPlate, fuelVal)
 	end
 end)
 
+RegisterNetEvent('VisionCar:fossilDino')
+AddEventHandler('VisionCar:fossilDino', function(retPlate, desFuel)	
+	local src = source
+	local xPlayer = ESX.GetPlayerFromId(src)
+	if isAdmin(xPlayer) then
+		TriggerEvent('VisionCar:SetServerFuel', retPlate, desFuel)
+	else
+		print('Warning : Admin command issued by Normal player')
+	end
+end)
+
+function isAdmin(xPlayer)
+	for k,v in ipairs(Config.StaffGroups) do
+		if xPlayer and xPlayer.getGroup() == v then 
+			return true 
+		end
+	end
+	return false
+end
+
 RegisterCommand("outputfuel", function(source, args, rawCommand)
 	for key, v in pairs(CarFuelLevel) do
 		print(v.plate .. ' ' .. tostring(v.fuel) .. ' ' .. tostring(v.notOwned))
 	end
+end, true)
+
+RegisterCommand("savefuelnow", function(source, args, rawCommand)
+	for key, v in pairs(CarFuelLevel) do
+		if not v.notOwned then
+			MySQL.Async.execute('UPDATE owned_vehicles SET `fuel` = @fuel WHERE plate = @plate', {
+					['@fuel'] = v.fuel,
+					['@plate'] = v.plate
+			}, function(rowsChanged)
+				--	Do Nothing
+			end)
+		end
+	end
+	print('Fuel data saved to database.')
 end, true)
 
 function ResetFuelData()
