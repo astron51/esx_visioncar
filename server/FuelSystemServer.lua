@@ -169,7 +169,11 @@ AddEventHandler('VisionCar:GetServerFuel', function(retplate, retfuel)
 			if data then
 				CarFuelLevel[retplate] = {plate = retplate, fuel = data, notOwned = false}
 			else
-				CarFuelLevel[retplate] = {plate = retplate, fuel = retfuel, notOwned = true}
+				local fuelDefault = retfuel
+				if fuelDefault <= 20 then
+					fuelDefault = 30
+				end
+				CarFuelLevel[retplate] = {plate = retplate, fuel = fuelDefault, notOwned = true}
 			end
 		end)
 	end
