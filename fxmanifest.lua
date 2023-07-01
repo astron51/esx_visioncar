@@ -25,3 +25,5 @@ server_scripts {
 export {
 	'GetFuel','SetFuel'
 }
+
+shared_script '@es_extended/imports.lua'

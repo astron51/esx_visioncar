@@ -20,6 +20,7 @@ Config.JerryCanRefill = 50
 
 -- Price for Fuel
 Config.Petrol = 0.5 -- Lower = More Expensive Fuel . Higher = More Cheap Fuel
+Config.MinimumCash = 1000
 
 -- Pump Model within Game
 Config.PumpModels = {
@@ -71,10 +72,9 @@ Config.GasStations = {
 	vector3(1784.324, 3330.55, 41.253)
 }
 
--- Blacklisted Car , Model Name or Hash ID
-Config.Blacklist = {
-	--"Adder",
-	--276773164
+-- Blacklisted Car , Hash ID
+Config.BlacklistCar = {
+    [114079392] = true -- ES
 }
 
 -- Fuel Compensation 

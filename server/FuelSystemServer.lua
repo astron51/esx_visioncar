@@ -7,16 +7,14 @@
 --it is responsible to handling Send and receive money data and fuel data within the SQL.
 ----------------------------------------------------------------------------------------------------
 
-ESX = nil
-
-TriggerEvent('esx:getSharedObject', function(obj) ESX = obj end)
+ESX = exports["es_extended"]:getSharedObject()
 
 local bReady = false
 
 -- Stored Vars
 
 local CarBeingFuel = {
- 	{ plate = 'VISIONRP' }
+ 	['VISIONRP'] = true
 }
 
 local CarFuelLevel = {
@@ -86,10 +84,10 @@ AddEventHandler('VisionCar:RemoveMoney', function(price)
 end)
 
 RegisterServerEvent('VisionCar:changedurability')
-AddEventHandler('VisionCar:changedurability', function(slot, durability)
+AddEventHandler('VisionCar:changedurability', function(slot, val)
 	local src = source
 	local xPlayer = ESX.GetPlayerFromId(src)
-	exports.ox_inventory:SetDurability(src, slot, durability)
+	exports.ox_inventory:SetDurability(src, slot, val)
 end)
 
 ESX.RegisterServerCallback('VisionCar:refillPetrolCan', function(source, cb)
@@ -115,44 +113,26 @@ ESX.RegisterServerCallback('VisionCar:getJerry', function(source, cb)
 end)
 
 ESX.RegisterServerCallback('VisionCar:CheckCarIsFueling', function(source, cb, plate)
-	local found = false
-	for i = 1, #CarBeingFuel do
-		Citizen.Wait(1)
-		if CarBeingFuel[i].plate == plate then
-			found = true
-			break
-		end
-	end
-	if found then
-		cb(true)
+	if not CarBeingFuel[plate] then
+		cb(false) -- Return False if car is not fueling
 	else
-		cb(false)
+		cb(true) -- vice versa
 	end
 end)
 
 RegisterNetEvent('VisionCar:ThisCarIsRefueling')
 AddEventHandler('VisionCar:ThisCarIsRefueling', function(plate)
-	local found = false
-	for i = 1, #CarBeingFuel do
-		Citizen.Wait(1)
-		if CarBeingFuel[i].plate == plate then 
-			found = true
-			break
-		end
-	end
-	if not found then
-		table.insert(CarBeingFuel, {plate = plate})
+	if not CarBeingFuel[plate] then
+		CarBeingFuel[plate] = true
 	end
 end)
 
 RegisterNetEvent('VisionCar:ThisCarIsNotRefueling')
 AddEventHandler('VisionCar:ThisCarIsNotRefueling', function(plate, fuel)
-	for i = 1, #CarBeingFuel do
-		Citizen.Wait(1)
-		if CarBeingFuel[i].plate == plate then 
-			table.remove(CarBeingFuel, i)
-			break 
-		end
+	if CarBeingFuel[plate] then
+		CarBeingFuel[plate] = nil
+	else
+		print('WARNING : Fuel Pump not in sync ' .. plate)
 	end
 	MySQL.Async.execute('UPDATE owned_vehicles SET `fuel` = @fuel WHERE plate = @plate', {
 		['@fuel'] = fuel,

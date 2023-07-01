@@ -11,10 +11,9 @@
 
 -- ESX 
 
-ESX = nil
+ESX = exports["es_extended"]:getSharedObject()
 Citizen.CreateThread(function()
 	while ESX == nil do
-		TriggerEvent('esx:getSharedObject', function(obj) ESX = obj end)
 		Citizen.Wait(0)
 	end
 	while ESX.GetPlayerData().job == nil do
@@ -37,7 +36,6 @@ local Keys = {
     ["NENTER"] = 201, ["N4"] = 108, ["N5"] = 60, ["N6"] = 107, ["N+"] = 96, ["N-"] = 97, ["N7"] = 117, ["N8"] = 61, ["N9"] = 118
   }
 local Vehicles 				  = {}
-local bIsThisCarBeingFuel = false
 local bIsPumpingPetrol = false
 local bIsNearPump = false
 local bIsFueling = false
@@ -89,7 +87,7 @@ Citizen.CreateThread(function()
 	while true do
 		-- Currently not pumping and Pump is in good shape and not destroyed.
 		if not bIsPumpingPetrol and ((bIsNearPump and GetEntityHealth(bIsNearPump) > 0) or (GetSelectedPedWeapon(PlayerPedId()) == 883325847 and not bIsNearPump)) then
-			if IsPedInAnyVehicle(PlayerPedId()) then
+			if IsPedInAnyVehicle(PlayerPedId()) and not Config.BlacklistCar[GetEntityModel(GetPlayersLastVehicle())] then
 				local pumpCoords = GetEntityCoords(bIsNearPump)
 				if GetIsVehicleEngineRunning(GetVehiclePedIsIn(PlayerPedId(), false)) then
 					-- Engine Running and Inside Car
@@ -117,7 +115,7 @@ Citizen.CreateThread(function()
 			else
 				local LastVehicle = GetPlayersLastVehicle()
 				local VehicleCoords = GetEntityCoords(LastVehicle)
-				if DoesEntityExist(LastVehicle) then
+				if DoesEntityExist(LastVehicle) and (GetVehicleEngineHealth(LastVehicle) ~= -4000) then
 					PromptSleep = 0
 					if (GetVehicleClass(LastVehicle) == 16 or GetVehicleClass(LastVehicle) == 15) and bExtendedPump then
 						if bExtendedPump and GetDistanceBetweenCoords(GetEntityCoords(PlayerPedId()), VehicleCoords) < Config.ExtendPumpRange then
@@ -131,7 +129,7 @@ Citizen.CreateThread(function()
 								MainPromp(LastVehicle, VehicleCoords)
 							end
 						elseif bIsNearPump then
-							Optional(LastVehicle, VehicleCoords)
+							Optional()
 						end
 					elseif (GetVehicleClass(LastVehicle) == 16 or GetVehicleClass(LastVehicle) == 15) and not bExtendedPump then
 						if GetDistanceBetweenCoords(GetEntityCoords(PlayerPedId()), VehicleCoords) < 15.0 then
@@ -139,9 +137,11 @@ Citizen.CreateThread(function()
 								MainPromp(LastVehicle, VehicleCoords)
 							end
 						elseif bIsNearPump then
-							Optional(LastVehicle, VehicleCoords)
+							Optional()
 						end
-					end					
+					end
+				else	
+					Optional()	
 				end
 			end
 		end
@@ -158,83 +158,90 @@ function MainPromp(LastVehicle, VehicleCoords)
 				canFuel = false
 			end
 		end
-		if GetVehicleFuelLevel(LastVehicle) < 95 and canFuel then
+		if GetVehicleFuelLevel(LastVehicle) < 95 and canFuel and not Config.BlacklistCar[GetEntityModel(LastVehicle)] then
 			if GetIsVehicleEngineRunning(LastVehicle) and not bExtendedPump then
 				DrawText3Ds(stringCoords.x, stringCoords.y, stringCoords.z + 1.2, 'Please turn off your ~r~engine~w~.')
 			else
-				if currentMoney > 10 then
-					if not bIsThisCarBeingFuel then
-						DrawText3Ds(stringCoords.x, stringCoords.y, stringCoords.z + 1.2, 'Press ~g~E ~w~to refuel vehicle.')
+				local GoodToFuel = false
+				if bIsNearPump then
+					if currentMoney > Config.MinimumCash then
+						GoodToFuel = true
+					else
+						DrawText3Ds(stringCoords.x, stringCoords.y, stringCoords.z + 1.2, 'Not enough ~g~money~w~, You need atleast ~g~$'.. Config.MinimumCash ..'~w~ in hand.')
 					end
-					if IsControlJustReleased(0, Keys['E']) and not bIsThisCarBeingFuel then
-						ESX.TriggerServerCallback('VisionCar:CheckCarIsFueling', function(RS)
-							if bIsThisCarBeingFuel then
-								Citizen.CreateThread(function()
-									Wait(5000)
-									bIsThisCarBeingFuel = false
-								end)
-								Citizen.CreateThread(function()
-									while bIsThisCarBeingFuel do
-										Citizen.Wait(0)
-										DrawText3Ds(stringCoords.x, stringCoords.y, stringCoords.z + 1.2, 'The car is being refuel.')
-									end
-								end)
+				else
+					GoodToFuel = true
+				end
+				if GoodToFuel then
+					DrawText3Ds(stringCoords.x, stringCoords.y, stringCoords.z + 1.2, 'Press ~g~E ~w~to refuel vehicle.')
+					if IsControlJustReleased(0, Keys['E']) then
+						ESX.TriggerServerCallback('VisionCar:CheckCarIsFueling', function(IsCarRefueling)
+							if IsCarRefueling then
+								if not bIsPumpingPetrol then
+									ESX.ShowNotification('This vehicle is being refueled')
+								end
 							else
-								bIsPumpingPetrol = true
-								PromptSleep = 2000
-								TriggerEvent('VisionCar:RefuelPump', bIsNearPump, PlayerPedId(), LastVehicle)
-								TriggerServerEvent('VisionCar:ThisCarIsRefueling', GetVehicleNumberPlateText(LastVehicle))
-								LoadAnimDict("timetable@gardener@filling_can")
+								if not bIsPumpingPetrol then
+									LoadAnimDict("timetable@gardener@filling_can")
+									bIsPumpingPetrol = true
+									PromptSleep = 2000
+									TriggerEvent('VisionCar:RefuelPump', bIsNearPump, PlayerPedId(), LastVehicle)
+									TriggerServerEvent('VisionCar:ThisCarIsRefueling', GetVehicleNumberPlateText(LastVehicle))
+								end
 							end
 						end, GetVehicleNumberPlateText(LastVehicle))
 					end
-				else
-					DrawText3Ds(stringCoords.x, stringCoords.y, stringCoords.z + 1.2, 'Not enough ~g~money~w~, You need atleast ~g~$10~w~ in hand.')
 				end
 			end
 		elseif not canFuel then
 			DrawText3Ds(stringCoords.x, stringCoords.y, stringCoords.z + 1.2, 'Jerry can is empty.')
-		else
+		elseif GetVehicleFuelLevel(LastVehicle) >= 95 then
 			DrawText3Ds(stringCoords.x, stringCoords.y, stringCoords.z + 1.2, 'Tank is full.')
+		elseif Config.BlacklistCar[GetEntityModel(LastVehicle)] then
+			DrawText3Ds(stringCoords.x, stringCoords.y, stringCoords.z + 1.2, 'Fuel System disabled for this vehicle')
 		end
 end
 
-function Optional(LastVehicle, VehicleCoords)
+function Optional()
 	-- Rework
-	local stringCoords = GetEntityCoords(bIsNearPump)
-	if currentMoney >= Config.JerryCanPrice then
-			-- Refuel Jerry function (?)
-		if currentWeapon and GetSelectedPedWeapon(PlayerPedId()) == 883325847 then
-			if currentWeapon.metadata.durability == 100 then
-				DrawText3Ds(stringCoords.x, stringCoords.y, stringCoords.z + 1.2, '~b~Jerry Can~w~ is full!')
-			else
-				local refillCost = Round(Config.JerryCanPrice * (1 - ((currentWeapon.metadata.durability / 100) * 4500) / 4500))
-				DrawText3Ds(stringCoords.x, stringCoords.y, stringCoords.z + 1.2, 'Press ~g~E ~w~to refill the ~b~Jerry Can~w~ for ~g~$' .. refillCost)
-				if IsControlJustReleased(0, Keys['E']) then
-					ESX.TriggerServerCallback('VisionCar:refillPetrolCan', function(result)
-					if not result then
-						ESX.ShowNotification('Unable to refill')
+	if bIsNearPump ~= false then
+		local stringCoords = GetEntityCoords(bIsNearPump)
+		if #(GetEntityCoords(PlayerPedId()) - stringCoords) <= 2.0 then
+			if currentMoney >= Config.JerryCanPrice then
+				-- Refuel Jerry function (?)
+				if currentWeapon and GetSelectedPedWeapon(PlayerPedId()) == 883325847 then
+					if currentWeapon.metadata.durability == 100 then
+						DrawText3Ds(stringCoords.x, stringCoords.y, stringCoords.z + 1.2, '~b~Jerry Can~w~ is full!')
 					else
-						TriggerServerEvent('VisionCar:RemoveMoney', refillCost)
-						currentWeapon.metadata.durability = 100 -- Server return result, force set durability to fix the false refill
+						local refillCost = Round(Config.JerryCanPrice * (1 - ((currentWeapon.metadata.durability / 100) * 4500) / 4500))
+						DrawText3Ds(stringCoords.x, stringCoords.y, stringCoords.z + 1.2, 'Press ~g~E ~w~to refill the ~b~Jerry Can~w~ for ~g~$' .. refillCost)
+						if IsControlJustReleased(0, Keys['E']) then
+							ESX.TriggerServerCallback('VisionCar:refillPetrolCan', function(result)
+								if not result then
+									ESX.ShowNotification('Unable to refill')
+								else
+									TriggerServerEvent('VisionCar:RemoveMoney', refillCost)
+									currentWeapon.metadata.durability = 100 -- Server return result, force set durability to fix the false refill
+								end
+							end)
+						end
 					end
-				end)
+				else
+					DrawText3Ds(stringCoords.x, stringCoords.y, stringCoords.z + 1.2, 'Press ~g~E ~w~to purchase a ~b~Jerry Can~w~ for ~g~$' .. Config.JerryCanPrice)
+					if IsControlJustReleased(0, Keys['E']) then
+						ESX.TriggerServerCallback('VisionCar:getJerry', function(result)
+							if not result then
+								ESX.ShowNotification('Purchase failed, make some space!')
+							else
+								TriggerServerEvent('VisionCar:RemoveMoney', Config.JerryCanPrice)
+							end
+						end)
+					end
 				end
-			end
-		else
-			DrawText3Ds(stringCoords.x, stringCoords.y, stringCoords.z + 1.2, 'Press ~g~E ~w~to purchase a ~b~Jerry Can~w~ for ~g~$' .. Config.JerryCanPrice)
-			if IsControlJustReleased(0, Keys['E']) then
-				ESX.TriggerServerCallback('VisionCar:getJerry', function(result)
-					if not result then
-						ESX.ShowNotification('Purchase failed, make some space!')
-					else
-						TriggerServerEvent('VisionCar:RemoveMoney', Config.JerryCanPrice)
-					end
-				end)
+			else
+				DrawText3Ds(stringCoords.x, stringCoords.y, stringCoords.z + 1.2, 'Not enough ~g~money~w~, you need atleast ~g~$' .. Config.JerryCanPrice .. '~w~ to buy a Jerry Can.')
 			end
 		end
-	else
-		DrawText3Ds(stringCoords.x, stringCoords.y, stringCoords.z + 1.2, 'Not enough ~g~money~w~, you need atleast ~g~$' .. Config.JerryCanPrice .. '~w~ to buy a Jerry Can.')
 	end
 end
 
@@ -322,8 +329,6 @@ end)
 AddEventHandler('VisionCar:RefuelPump', function(pumpObject, ped, vehicle)
 	TaskTurnPedToFaceEntity(ped, vehicle, 1000)
 	Citizen.Wait(1000)
-	--SetCurrentPedWeapon(ped, -1569615261, true) -- Change weapon to fist
-	LoadAnimDict("timetable@gardener@filling_can")
 	TaskPlayAnim(ped, "timetable@gardener@filling_can", "gar_ig_5_filling_can", 2.0, 8.0, -1, 50, 0, 0, 0, 0)
 	TriggerEvent('VisionCar:FuelUpTick', pumpObject, ped, vehicle)
 	while bIsPumpingPetrol do
@@ -338,8 +343,9 @@ AddEventHandler('VisionCar:RefuelPump', function(pumpObject, ped, vehicle)
 			local extraString = ""
 			extraString = "\nCost: ~g~$" .. Round(currentCost, 1)
 
-			DrawText3Ds(stringCoords.x, stringCoords.y, stringCoords.z + 1.2, 'Press ~g~E ~w~to cancel the fueling' .. extraString)
+			DrawText3Ds(stringCoords.x, stringCoords.y, stringCoords.z + 1.2, 'Press ~g~E ~w~to cancel the fueling')
 			DrawText3Ds(vehicleCoords.x, vehicleCoords.y, vehicleCoords.z + 0.5, '~g~Vehicle Fuel Level : ~w~' .. Round(currentFuel, 1) .. "%")
+			DrawText3Ds(vehicleCoords.x, vehicleCoords.y, vehicleCoords.z + 0.51, extraString)
 		else
 			if currentWeapon then
 				local Converted = (currentWeapon.metadata.durability / 100) * 4500
@@ -355,8 +361,7 @@ AddEventHandler('VisionCar:RefuelPump', function(pumpObject, ped, vehicle)
 		if IsControlJustReleased(0, 38) or (isNearPump and GetEntityHealth(pumpObject) <= 0) then
 			bIsPumpingPetrol = false
 		end
-		
-		if IsPedDeadOrDying(GetPlayerPed(-1), 1) then
+		if IsPedDeadOrDying(GetPlayerPed(-1), 1) or (#(GetEntityCoords(PlayerPedId()) - GetEntityCoords(vehicle)) >= 5) then
 			bIsPumpingPetrol = false
 		end
 	end
@@ -372,7 +377,7 @@ end)
 Citizen.CreateThread(function()
 	while true do
 		local waitTimer = 500
-		while IsPedInAnyVehicle(PlayerPedId(), false) do
+		while IsPedInAnyVehicle(PlayerPedId(), false) and not Config.BlacklistCar[GetEntityModel(LastVehicle)] do
 			waitTimer = 0
 			Citizen.Wait(0)
 			local RFuel = 10
